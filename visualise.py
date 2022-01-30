@@ -8,10 +8,10 @@ from loaddata import VALRESULTAT_FILES, SHAPE_FILES, load_geoframe, load_datafra
 if __name__ == "__main__":
 
   # Load valresultat
-  parties = ['V', 'S', 'MP' , 'FI']
+  parties = ['V', 'S', 'MP'] # , 'FI']
   # Map party columns to a single column and add columns for riksdag/region/kommun
   df_valresultat = pd.concat([
-      load_dataframe(*VALRESULTAT_FILES[2018][val]).rename(columns={party: 'Procent'}).assign(Parti=party).assign(Val=val) for party in parties for val in [VAL.RIKSDAG, VAL.REGION, VAL.KOMMUN]
+      load_dataframe(*VALRESULTAT_FILES[2018][val]).rename(columns={party: 'Procent'}).assign(Parti=party).assign(Val=val.name.title()) for party in parties for val in [VAL.RIKSDAG, VAL.REGION, VAL.KOMMUN]
   ])
 
   # Load geo frame and change name of column to match above frame
@@ -24,17 +24,20 @@ if __name__ == "__main__":
   df = df_geo.merge(df_valresultat, on='VALDISTRIKTSNAMN').rename(columns={'VALDISTRIKTSNAMN': 'Valdistrikt'}).set_index('Valdistrikt')
 
   # Select Hammarby-Skarpnack districts
-  df= df[(df.KVK_NAMN == "4 Östra Söderort") & (df.index.str.startswith('Skarpn'))]
+  df = df[(df.KVK_NAMN == "4 Östra Söderort") & (df.index.str.startswith('Skarpn'))]
 
+  # Make one plot per val
+  for val in [VAL.RIKSDAG, VAL.REGION, VAL.KOMMUN]:
+      df_val = df.query(f'Val=="{val.name.title()}"')
 
-  fig = px.choropleth(
-      df,
-      geojson=df.geometry,
-      locations=df.index,
-      color='Procent',
-      facet_col='Parti',
-      facet_row='Val',
-      projection='mercator'
-  )
-  fig.update_geos(fitbounds="locations", visible=False)
-  fig.write_html('./docs/test_map.html')
+      fig = px.choropleth(
+          df_val,
+          geojson=df_val.geometry,
+          locations=df_val.index,
+          color='Procent',
+          facet_col='Parti',
+          # facet_row='Val',
+          projection='mercator'
+      )
+      fig.update_geos(fitbounds="locations", visible=False)
+      fig.write_html(f'./docs/{val.name.title()}.html')
