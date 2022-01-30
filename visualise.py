@@ -6,7 +6,14 @@ from val import VAL, VAL_GEO
 from loaddata import VALRESULTAT_FILES, SHAPE_FILES, load_geoframe, load_dataframe
 
 if __name__ == "__main__":
-  df_valresultat = load_dataframe(*VALRESULTAT_FILES[2018][VAL.RIKSDAG])
+
+  # Load valresultat
+  parties = ['V', 'S', 'MP' , 'FI']
+  # Map party columns to a single column and add columns for riksdag/region/kommun
+  df_valresultat = pd.concat([
+      load_dataframe(*VALRESULTAT_FILES[2018][val]).rename(columns={party: 'Procent'}).assign(Parti=party).assign(Val=val) for party in parties for val in [VAL.RIKSDAG, VAL.REGION, VAL.KOMMUN]
+  ])
+
   # Load geo frame and change name of column to match above frame
   df_geo = load_geoframe(SHAPE_FILES[2018][VAL_GEO.VALDISTRIKT]).rename(columns={'VD_NAMN': 'VALDISTRIKTSNAMN'})
   # Change to the right CRS
@@ -19,9 +26,15 @@ if __name__ == "__main__":
   # Select Hammarby-Skarpnack districts
   df= df[(df.KVK_NAMN == "4 Östra Söderort") & (df.index.str.startswith('Skarpn'))]
 
-  # Map party columns to a single column
-  parties = ['V', 'S', 'MP']
-  df = pd.concat([df[[party, 'geometry']].rename(columns={party: 'Procent'}).assign(Parti=party) for party in parties])
 
-  fig = px.choropleth(df, geojson=df.geometry, locations=df.index, color='Procent', facet_col='Parti', projection='mercator'); fig.update_geos(fitbounds="locations", visible=False)
-  fig.show()
+  fig = px.choropleth(
+      df,
+      geojson=df.geometry,
+      locations=df.index,
+      color='Procent',
+      facet_col='Parti',
+      facet_row='Val',
+      projection='mercator'
+  )
+  fig.update_geos(fitbounds="locations", visible=False)
+  fig.write_html('./docs/test_map.html')

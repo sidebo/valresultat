@@ -17,7 +17,9 @@ SHAPE_FILES = {
 # Election result (filename, sheet name) tuples
 VALRESULTAT_FILES = {
     2018: {
-        VAL.RIKSDAG: ("2018_R_per_valdistrikt.xlsx", "R procent")
+        VAL.RIKSDAG: ("2018_R_per_valdistrikt.xlsx", "R procent"),
+        VAL.REGION: ("2018_L_per_valdistrikt.xlsx", "L procent"),
+        VAL.KOMMUN: ("2018_K_per_valdistrikt.xlsx", "K procent")
     }
 }
 
@@ -35,5 +37,10 @@ def load_dataframe(fname: str, sheet_name: str = None) -> pd.DataFrame:
     logger.error(f"Invalid arguments {fname} and {sheet_name}!")
 
 if __name__ == "__main__":
-  df = load_geoframe()
+  # Geoframe
+  # df = load_geoframe()
+
+  # Valresultat frame
+  df = load_dataframe(*VALRESULTAT_FILES[2018][VAL.RIKSDAG])
+
   print(f'Loaded geo dataframe into variable "df"')
