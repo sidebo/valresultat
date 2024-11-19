@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import geopandas as gpd
+from functools import cache
 import pandas as pd
 from val import VAL, VAL_GEO
 import logging
@@ -28,13 +29,16 @@ def load_geoframe(fname: str = SHAPE_FILES[2018][VAL_GEO.VALDISTRIKT]) -> gpd.ge
     logger.info(f"Loading geo data from {fname}")
     return gpd.read_file(fname)
 
+@cache
 def load_dataframe(fname: str, sheet_name: str = None) -> pd.DataFrame:
+    parties = ["V", "S", "MP", "M", "C", "KD", "SD", "FI"]
+    usecols = parties + ["VALDELTAGANDE", "VALDISTRIKTSNAMN"]
     logger.info(f"Loading data frame {fname}")
     if fname.endswith(".xlsx") and sheet_name is not None:
-        return pd.read_excel(fname, sheet_name=sheet_name)
+        return pd.read_excel(fname, sheet_name=sheet_name, usecols=usecols)
     elif fname.endswith(".csv") and sheet_name is None:
-        return pd.csv(fname)
-    logger.error(f"Invalid arguments {fname} and {sheet_name}!")
+        return pd.read_csv(fname, usecols=usecols)
+    raise ValueError((fname, sheet_name))
 
 if __name__ == "__main__":
   # Geoframe
@@ -43,4 +47,4 @@ if __name__ == "__main__":
   # Valresultat frame
   df = load_dataframe(*VALRESULTAT_FILES[2018][VAL.RIKSDAG])
 
-  print(f'Loaded geo dataframe into variable "df"')
+  print(f'Loaded dataframe into variable "df"')
