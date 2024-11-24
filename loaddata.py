@@ -13,17 +13,15 @@ DATA_DIR = "data"
 VALRESULTAT_DIR = Path(DATA_DIR) / "valresultat"
 VALGEO_DIR = Path(DATA_DIR) / "valgeografi"
 
-SHAPE_FILES = {
+GEO_FILES = {
     2018: {
       VAL_GEO.RIKSDAGSVALKRETS: VALGEO_DIR / "2018_valgeografi_riksdagsvalkretsar/alla_riksdagsvalkretsar.shp",
       VAL_GEO.KOMMUNVALKRETS:   VALGEO_DIR / "2018_valgeografi_kommunvalkretsar/alla_kommunvalkretsar.shp",
       VAL_GEO.VALDISTRIKT:      VALGEO_DIR / "2018_valgeografi_valdistrikt/alla_valdistrikt.shp"
     },
     2022: {
-      # TODO: get new geo files
-      VAL_GEO.RIKSDAGSVALKRETS: VALGEO_DIR / "2018_valgeografi_riksdagsvalkretsar/alla_riksdagsvalkretsar.shp",
-      VAL_GEO.KOMMUNVALKRETS:   VALGEO_DIR / "2018_valgeografi_kommunvalkretsar/alla_kommunvalkretsar.shp",
-      VAL_GEO.VALDISTRIKT:      VALGEO_DIR / "2018_valgeografi_valdistrikt/alla_valdistrikt.shp"
+      # Below is Stockholm only, from https://www.val.se/valresultat/riksdag-region-och-kommun/2022/radata-och-statistik.html#slutligtvalresultat
+      VAL_GEO.VALDISTRIKT: VALGEO_DIR / "2022_valdistrikt/VD_01_20220910_Val_20220911.json",
     }
 }
 
@@ -41,16 +39,21 @@ VALRESULTAT_FILES = {
     }
 }
 
-def load_geoframe(fname: str = SHAPE_FILES[2018][VAL_GEO.VALDISTRIKT]) -> gpd.geodataframe.GeoDataFrame:
+def load_geoframe(year: int, geo=VAL_GEO.VALDISTRIKT) -> gpd.geodataframe.GeoDataFrame:
     """Load geo data frame"""
+    fname = GEO_FILES[year][geo]
     logger.info(f"Loading geo data from {fname}")
-    return gpd.read_file(fname)
+    df_geo = gpd.read_file(fname)
+    if year == 2022:
+        df_geo = df_geo.set_crs("EPSG:32633", allow_override=True)
+    return df_geo.to_crs("EPSG:4326")
+
 
 @cache
 def load_dataframe(fname: Union[str, Path], sheet_name: str = None) -> pd.DataFrame:
     fname = str(fname)
     parties = ["V", "S", "MP", "M", "C", "KD", "SD"]
-    usecols = parties + ["VALDELTAGANDE", "VALDISTRIKTSNAMN"]
+    usecols = parties + ["VALDELTAGANDE", "VALDISTRIKTSKOD", "VALDISTRIKTSNAMN", "VALKRETSNAMN"]
     logger.info(f"Loading data frame {fname}")
     if fname.endswith(".xlsx") and sheet_name is not None:
         return pd.read_excel(fname, sheet_name=sheet_name, usecols=usecols)
