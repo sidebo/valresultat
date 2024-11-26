@@ -109,8 +109,5 @@ if MAKE_VALDELTAGANDE:
 
 
 """
-Where did the 'bottom' valdistrikt in Skarpnack go? 
-Seems they disappeared in the 2022 data.
-
-Also, running with 2022 data 'valresultat' track yields bananas Procent values.
+TODO: calculate percent for 2022 valresultat data
 """
