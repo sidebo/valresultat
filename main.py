@@ -3,25 +3,22 @@ import plotly.express as px
 import pandas as pd
 import folium
 import pyproj
-from val import VAL, VAL_GEO
-from loaddata import VALRESULTAT_FILES, GEO_FILES, load_geoframe, load_dataframe
+from val import VAL 
+from loaddata import load_geoframe, load_dataframe
 import logging
 
 logger = logging.getLogger(__name__)
 
-YEAR = 2018
-MAKE_VALRESULTAT = True 
-MAKE_VALDELTAGANDE = False #True # True
+YEAR = 2022
+MAKE_VALRESULTAT = False #True 
+MAKE_VALDELTAGANDE = True #True # True
 
 map_columns={'VALDISTRIKTSNAMN': 'VD_NAMN',
-             'Vdnamn': 'VD_NAMN',
-             'Lkfv': 'VD_KOD',
-             'VD': 'VD_KOD',
-             'VALDISTRIKTSKOD': 'VD_KOD'}
-# Load valresultat
+             'Vdnamn': 'VD_NAMN'}
 
+# Load valresultat
 df_val = pd.concat([
-    load_dataframe(*VALRESULTAT_FILES[YEAR][val]).assign(Val=val.name.title())
+    load_dataframe(YEAR, val).assign(Val=val.name.title())
     for val in [VAL.RIKSDAG, VAL.REGION, VAL.KOMMUN]
 ])
 df_val = df_val.rename(columns=map_columns)
@@ -29,16 +26,17 @@ df_val = df_val.rename(columns=map_columns)
 # Reminder: 'VD' = Valdistrikt
 
 # Load geo frame and change name of column to match above frame
-df_geo = load_geoframe(YEAR).rename(columns=map_columns)
-# By comparing with valdistriktskod in the 2018 xlsx files, it seems
-# the last 4 digits is the actual code
-df_geo["VD_KOD"] = df_geo["VD_KOD"].map(lambda x: int(x[-4:]))
+df_geo = load_geoframe(YEAR)
+df_geo=df_geo.rename(columns=map_columns)
 
 # Take VD_NAMN from geo frame
-df = df_geo.merge(df_val.drop(columns=["VD_NAMN"]), on='VD_KOD')
+# NB: Seems important to create merged from GEO frame and not the other way
+#     around, to make sure the merged is of the right type.
+df = df_geo.merge(df_val.drop(columns=["VD_NAMN"]), on=["LAN_KOD", "KOMMUN_KOD", "VD_KOD"])
 # Stockholm area
-df = df[df["RVK_NAMN"] == "Stockholms kommun"].copy()
-
+KOMMUN_KOD_STOCKHOLM = 80
+KOMMUN_KOD = KOMMUN_KOD_STOCKHOLM
+df = df[df["KOMMUN_KOD"] == KOMMUN_KOD].copy()
 
 ### VALRESULTAT 
 if MAKE_VALRESULTAT:
@@ -50,11 +48,9 @@ if MAKE_VALRESULTAT:
                              value_name='Procent', 
                              id_vars=['Val','VD_NAMN', 'VD_KOD', 'KVK_NAMN', 'geometry'], 
                              var_name='Parti') 
-    # NB: Seems important to create merged from GEO frame and not the other way
-    #     around, to make sure the merged is of the right type.
     df = df.rename(columns={'VD_NAMN': 'Valdistrikt'}).set_index('Valdistrikt')
     
-    # Select Hammarby-Skarpnack districts
+    ## Select Hammarby-Skarpnack districts
     df = df[(df.KVK_NAMN == "4 Östra Söderort") & (df.index.str.startswith('Skarpn'))]
     
     # Make one big plot with all elections
@@ -71,9 +67,8 @@ if MAKE_VALRESULTAT:
         width=1400
     )
     fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
-    # fig.for_each_trace(lambda t: t.update(name=t.name.split("=")[1]))
     fig.update_geos(fitbounds="locations", visible=False)
-    fig.write_html(f'./docs/all.html')
+    fig.write_html(f'./docs/{YEAR}-resultat-alla.html')
     
     # Make one plot per val
     for val in [VAL.RIKSDAG, VAL.REGION, VAL.KOMMUN]:
@@ -85,14 +80,12 @@ if MAKE_VALRESULTAT:
             locations=df_val.index,
             color='Procent',
             facet_col='Parti',
-            # facet_row='Val',
             projection='mercator',
-            title=f"Valresultat {val.name.title().replace('Region', 'Landsting')} {YEAR}"
+            title=f"Valresultat {val.name.title().replace('Region', 'Landsting' if YEAR <= 2018 else 'Region')} {YEAR}"
         )
         fig.for_each_annotation(lambda a: a.update(text=a.text.split("=")[1]))
-        # fig.for_each_trace(lambda t: t.update(name=t.name.split("=")[1]))
         fig.update_geos(fitbounds="locations", visible=False)
-        fig.write_html(f'./docs/{val.name.title()}.html')
+        fig.write_html(f'./docs/{YEAR}-resultat-{val.name.lower()}.html')
 
 ### VALDELTAGANDE
 if MAKE_VALDELTAGANDE:
@@ -112,7 +105,7 @@ if MAKE_VALDELTAGANDE:
                    tooltip=folium.GeoJsonTooltip(
                        fields=['VD_NAMN', 'Valdeltagande'], 
                        aliases=['', ''])).add_to(m)
-    m.save(f"./stockholm-valdeltagande-{YEAR}.html")
+    m.save(f"./docs/stockholm-deltagande-riksdagsval-{YEAR}.html")
 
 
 """

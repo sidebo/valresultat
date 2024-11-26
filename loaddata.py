@@ -46,20 +46,37 @@ def load_geoframe(year: int, geo=VAL_GEO.VALDISTRIKT) -> gpd.geodataframe.GeoDat
     df_geo = gpd.read_file(fname)
     if year == 2022:
         df_geo = df_geo.set_crs("EPSG:32633", allow_override=True)
+        df_geo = extract_codes(df_geo, "Lkfv")
     return df_geo.to_crs("EPSG:4326")
 
+def extract_codes(df, col_vd_code: str) -> pd.DataFrame:
+    df = df.copy()
+    df["VD_KOD_STR"] = df[col_vd_code].astype(str)
+    df["VD_KOD"] = df["VD_KOD_STR"].map(lambda x: int(x[-4:]))
+    df["KOMMUN_KOD"] = df["VD_KOD_STR"].map(lambda x: int(x[-6:-4]))
+    df["LAN_KOD"] = df["VD_KOD_STR"].map(lambda x: int(x[:-6]))
+    df = df.drop(columns=["VD_KOD_STR", col_vd_code])
+    return df
 
 @cache
-def load_dataframe(fname: Union[str, Path], sheet_name: str = None) -> pd.DataFrame:
+def load_dataframe(year: int, val: VAL, sheet_name: str = None) -> pd.DataFrame:
+    fname, sheet_name = VALRESULTAT_FILES[year][val]
     fname = str(fname)
     parties = ["V", "S", "MP", "M", "C", "KD", "SD"]
-    usecols = parties + ["VALDELTAGANDE", "VALDISTRIKTSKOD", "VALDISTRIKTSNAMN", "VALKRETSNAMN"]
+    idx_cols = ["LÄNSKOD", "KOMMUNKOD", "VALDISTRIKTSKOD"] if year == 2018 else ["VALDISTRIKTSKOD"]
+    usecols = idx_cols + parties + ["VALDELTAGANDE", "VALDISTRIKTSNAMN", "VALKRETSNAMN"]
     logger.info(f"Loading data frame {fname}")
+    df = None
     if fname.endswith(".xlsx") and sheet_name is not None:
-        return pd.read_excel(fname, sheet_name=sheet_name, usecols=usecols)
+        df = pd.read_excel(fname, sheet_name=sheet_name, usecols=usecols)
     elif fname.endswith(".csv") and sheet_name is None:
-        return pd.read_csv(fname, usecols=usecols)
-    raise ValueError((fname, sheet_name))
+        df = pd.read_csv(fname, usecols=usecols)
+    else:
+        raise ValueError(fname)
+    if year == 2022:
+        df = extract_codes(df, "VALDISTRIKTSKOD")
+    return df
+    
 
 if __name__ == "__main__":
   # Geoframe
