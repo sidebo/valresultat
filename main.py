@@ -93,7 +93,8 @@ if MAKE_VALDELTAGANDE:
     bins = (0., 70., 75., 80., 85., 100)
     labels = ('<70%', '70-75%', '75-80%', '80-85%', '>85%')
     # Color-blind friendly heatmap palette gradient sequence
-    colors = ['#ffffcc', '#ffeda0', '#feb24c', '#fd8d3c', '#e31a1c']
+    #colors = ['#ffffcc', '#ffeda0', '#feb24c', '#fd8d3c', '#e31a1c']
+    colors = ['#ffffcc', '#ffeda0', '#fd8d3c', '#e31a1c', '#800026']
 
     df["bin"] = pd.cut(df["VALDELTAGANDE"], bins, labels=labels).astype(str)
     df["color"] = pd.cut(df["VALDELTAGANDE"], bins, labels=colors).astype(str)
@@ -105,7 +106,9 @@ if MAKE_VALDELTAGANDE:
                    tooltip=folium.GeoJsonTooltip(
                        fields=['VD_NAMN', 'Valdeltagande'], 
                        aliases=['', ''])).add_to(m)
-    m.save(f"./docs/stockholm-deltagande-riksdagsval-{YEAR}.html")
+    out_fname = f"./docs/stockholm-deltagande-riksdagsval-{YEAR}.html")
+    print(f"Saving map at {out_fname}")
+    m.save(out_fname)
 
 
 """
